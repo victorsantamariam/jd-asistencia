@@ -2329,9 +2329,13 @@ fetch('data/data.json')
         fetch("/api/sync", {
           headers: { "X-Access-Key": "MiMejorElemnto" }
         })
-          .then(res => {
-            if (!res.ok) throw new Error("El servidor respondió con código HTTP " + res.status);
-            return res.json();
+          .then(async res => {
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              const msg = (data && data.error) ? data.error : ("El servidor respondió con código HTTP " + res.status);
+              throw new Error(msg);
+            }
+            return data;
           })
           .then(result => {
             btnSyncLive.disabled = false;

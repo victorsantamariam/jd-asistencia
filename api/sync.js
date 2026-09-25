@@ -22,9 +22,16 @@ export default async function handler(req, res) {
   const PROJECT_TOKEN = 'AAAABNdd2QfFj8cv';
   const BASE_URL = 'https://gestorproyectos.esumer.edu.co/api/v1/public';
 
+  const BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+    'Referer': 'https://gestorproyectos.esumer.edu.co/tablero/proyecto/AAAABNdd2QfFj8cv'
+  };
+
   try {
     const projRes = await fetch(`${BASE_URL}/proyectos/${PROJECT_TOKEN}/tablero`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (JDDashboard/1.0)' }
+      headers: BROWSER_HEADERS
     });
     if (!projRes.ok) throw new Error(`HTTP ${projRes.status} al conectar al proyecto`);
 
@@ -55,7 +62,7 @@ export default async function handler(req, res) {
       const pName = (prog.varNombrePrograma || '').trim();
       try {
         const r = await fetch(`${BASE_URL}/programas/${prog.token}/tablero`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' }
+          headers: BROWSER_HEADERS
         });
         if (!r.ok) return null;
         const d = await r.json();

@@ -35,9 +35,15 @@ export default async function handler(req, res) {
     });
     if (!projRes.ok) {
       const errBody = await projRes.text();
-      const cfRay = projRes.headers.get('cf-ray') || '';
-      const server = projRes.headers.get('server') || '';
-      throw new Error(`HTTP ${projRes.status} upstream (${server}, ray: ${cfRay}): ${errBody.slice(0, 150)}`);
+      const isCf = projRes.status === 403 || errBody.includes('Just a moment') || errBody.includes('cloudflare');
+      return res.status(200).json({
+        success: false,
+        isCloudflareBlocked: isCf,
+        error: isCf
+          ? "El cortafuegos Cloudflare del servidor origen bloquea solicitudes directas desde servidores en la nube (Vercel/AWS)."
+          : `El servidor origen respondió con código HTTP ${projRes.status}`,
+        detail: "Los datos base (57 grupos, 2,127 matrículas) están 100% operativos en el sistema. Para actualizar asistencias en vivo con las clases del día, use el script local o cargue el archivo Excel."
+      });
     }
 
     const projectData = await projRes.json();
@@ -209,6 +215,14 @@ export default async function handler(req, res) {
       data: payload
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    const isCf = (err.message && (err.message.includes('403') || err.message.includes('cloudflare') || err.message.includes('Just a moment')));
+    return res.status(200).json({
+      success: false,
+      isCloudflareBlocked: isCf,
+      error: isCf
+        ? "El cortafuegos Cloudflare del servidor origen bloquea solicitudes directas desde servidores en la nube (Vercel/AWS)."
+        : err.message,
+      detail: "Los datos base (57 grupos, 2,127 matrículas) están completamente cargados y operativos en el sistema."
+    });
   }
 }

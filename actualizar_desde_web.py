@@ -10,6 +10,7 @@ import ssl
 import json
 import os
 import sys
+from datetime import datetime
 
 PROJECT_TOKEN = "AAAABNdd2QfFj8cv"
 BASE_URL = "https://gestorproyectos.esumer.edu.co/api/v1/public"
@@ -209,7 +210,15 @@ def sync_data():
     print(f"   - Estudiantes base: {len(base_estudiantes)}")
     print(f"   - Registros diarios de asistencia (sesión a sesión): {len(asistencia_diaria)}")
 
+    now_str = datetime.now().strftime("%d/%m/%Y, %I:%M:%S %p")
     dataset = {
+        "metadata": {
+            "ultimaActualizacion": now_str,
+            "totalMatriculas": len(matriculas_list),
+            "totalGrupos": len(grupos_list),
+            "totalEstudiantes": len(base_estudiantes),
+            "totalAsistencias": len(asistencia_diaria)
+        },
         "parametros": parametros,
         "grupos": grupos_list,
         "matriculas": matriculas_list,
@@ -229,7 +238,17 @@ def sync_data():
         f.write("window.INITIAL_DATA = " + json.dumps(dataset, ensure_ascii=False) + ";")
     print("💾 Guardado en js/data.js")
 
-    print("\n🎉 ¡Sincronización completada exitosamente! Recargue index.html en su navegador.")
+    # Mirror to public/ for Vercel
+    if os.path.exists("public"):
+        os.makedirs("public/data", exist_ok=True)
+        with open("public/data/data.json", "w", encoding="utf-8") as f:
+            json.dump(dataset, f, ensure_ascii=False, indent=2)
+        os.makedirs("public/js", exist_ok=True)
+        with open("public/js/data.js", "w", encoding="utf-8") as f:
+            f.write("window.INITIAL_DATA = " + json.dumps(dataset, ensure_ascii=False) + ";")
+        print("💾 Guardado en public/data/data.json y public/js/data.js")
+
+    print(f"\n🎉 ¡Sincronización completada exitosamente a las {now_str}!")
     return True
 
 if __name__ == "__main__":

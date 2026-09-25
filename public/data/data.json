@@ -1,4 +1,11 @@
 {
+  "metadata": {
+    "ultimaActualizacion": "25/09/2026, 06:02:38 PM",
+    "totalMatriculas": 2127,
+    "totalGrupos": 57,
+    "totalEstudiantes": 2064,
+    "totalAsistencias": 9697
+  },
   "parametros": {
     "niveles": [
       {
@@ -5105,7 +5112,7 @@
     {
       "cedula": "1233191606",
       "nombre": "JUAN  HIDALGO",
-      "estado": "activa",
+      "estado": "retirado",
       "grupo": "DAT-03 - Análisis y Visualización de Datos",
       "codigo": "DAT-03",
       "horario": "Martes 18:30-21:30 | Jueves 18:30-21:30",
@@ -62657,7 +62664,7 @@
       "tipoDoc": "CC",
       "correo": "jhvpsicologia@gmail.com",
       "telefono": "",
-      "estadoMatricula": "activa",
+      "estadoMatricula": "retirado",
       "fechaMatricula": "",
       "codigoGrupo": "DAT-03",
       "nombreGrupo": "DAT-03 - Análisis y Visualización de Datos",

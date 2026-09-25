@@ -5,7 +5,7 @@
   "description": "Sistema de Control de Asistencia J.D.",
   "type": "module",
   "scripts": {
-    "start": "python3 server.py",
-    "build": "echo 'Ready'"
+    "build": "node build.js",
+    "start": "python3 server.py"
   }
 }

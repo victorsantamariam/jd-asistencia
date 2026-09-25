@@ -33,7 +33,12 @@ export default async function handler(req, res) {
     const projRes = await fetch(`${BASE_URL}/proyectos/${PROJECT_TOKEN}/tablero`, {
       headers: BROWSER_HEADERS
     });
-    if (!projRes.ok) throw new Error(`HTTP ${projRes.status} al conectar al proyecto`);
+    if (!projRes.ok) {
+      const errBody = await projRes.text();
+      const cfRay = projRes.headers.get('cf-ray') || '';
+      const server = projRes.headers.get('server') || '';
+      throw new Error(`HTTP ${projRes.status} upstream (${server}, ray: ${cfRay}): ${errBody.slice(0, 150)}`);
+    }
 
     const projectData = await projRes.json();
     const programas = projectData.programas || [];

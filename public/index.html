@@ -64,6 +64,9 @@
           <p>Control de Asistencia</p>
         </div>
       </div>
+      <button id="btn-close-sidebar" class="mobile-close-btn" aria-label="Cerrar menú" type="button">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
     </div>
 
     <nav class="sidebar-nav">
@@ -135,19 +138,25 @@
       </button>
     </div>
   </aside>
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
   <!-- Main View Area -->
   <main class="app-main" id="app-main">
     <header class="top-navbar">
-      <div class="page-title-box">
-        <h2 id="page-title">Inicio — Tablero General de Asistencia</h2>
-        <p id="page-desc">Monitoreo general de programas, grupos e indicadores institucionales</p>
+      <div class="navbar-left">
+        <button id="btn-toggle-sidebar" class="mobile-menu-btn" aria-label="Abrir menú de navegación" type="button">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div class="page-title-box">
+          <h2 id="page-title">Inicio — Tablero General de Asistencia</h2>
+          <p id="page-desc">Monitoreo general de programas, grupos e indicadores institucionales</p>
+        </div>
       </div>
 
       <div class="top-actions">
-        <button class="btn btn-outline btn-sm" onclick="window.print();">
+        <button class="btn btn-outline btn-sm btn-print" onclick="window.print();" title="Imprimir / Exportar a PDF">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-          Imprimir / PDF
+          <span class="btn-text">Imprimir / PDF</span>
         </button>
         <button id="btn-logout-top" class="btn btn-outline btn-sm btn-logout-action" title="Cerrar sesión de acceso seguro" style="display:flex;align-items:center;gap:6px;">
           <svg style="width:14px;height:14px;color:var(--critico);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>

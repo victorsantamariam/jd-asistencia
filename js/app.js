@@ -33,6 +33,50 @@ document.addEventListener("DOMContentLoaded", function () {
   const pageDesc = document.getElementById("page-desc");
   const navItems = document.querySelectorAll(".nav-item");
 
+  // Mobile Sidebar Drawer Control
+  const sidebar = document.getElementById("app-sidebar");
+  const sidebarOverlay = document.getElementById("sidebar-overlay");
+  const btnToggleSidebar = document.getElementById("btn-toggle-sidebar");
+  const btnCloseSidebar = document.getElementById("btn-close-sidebar");
+
+  function openSidebar() {
+    if (sidebar) sidebar.classList.add("open");
+    if (sidebarOverlay) sidebarOverlay.classList.add("active");
+    if (window.innerWidth <= 1024) {
+      document.body.style.overflow = "hidden";
+    }
+  }
+
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.remove("open");
+    if (sidebarOverlay) sidebarOverlay.classList.remove("active");
+    document.body.style.overflow = "";
+  }
+
+  if (btnToggleSidebar) {
+    btnToggleSidebar.addEventListener("click", () => {
+      if (sidebar && sidebar.classList.contains("open")) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
+    });
+  }
+
+  if (btnCloseSidebar) {
+    btnCloseSidebar.addEventListener("click", closeSidebar);
+  }
+
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", closeSidebar);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sidebar && sidebar.classList.contains("open")) {
+      closeSidebar();
+    }
+  });
+
   // Navigation Click Handlers
   navItems.forEach(item => {
     item.addEventListener("click", () => {
@@ -47,6 +91,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (tab === "cursos" && params.grupo) filters.cursos.grupo = params.grupo;
       if (tab === "ficha" && params.cedula) filters.ficha.cedula = params.cedula;
     }
+
+    // Auto-close sidebar drawer on mobile
+    closeSidebar();
 
     // Update active nav state
     navItems.forEach(item => {

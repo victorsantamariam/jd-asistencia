@@ -2038,7 +2038,13 @@
           <div class="card-header">
             <div class="card-title-box">
               <h3>Actualizar Informe desde Archivo Excel</h3>
-              <p>Arrastre un archivo Informe Asistencia.xlsx para recalcular al instante</p>
+              <p>Arrastre un archivo Excel (.xlsx) para recalcular y actualizar el tablero al instante</p>
+            </div>
+            <div>
+              <button id="btn-download-excel-template" class="btn btn-outline btn-sm" title="Descargar plantilla de Excel de ejemplo con el formato institucional">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                Descargar Plantilla Excel (.xlsx)
+              </button>
             </div>
           </div>
           <div class="card-body">
@@ -2046,12 +2052,49 @@
               <svg class="dropzone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
               <h4 style="font-size:16px;font-weight:700;color:var(--text-main);margin-bottom:6px;">Arrastre su archivo Excel aquí</h4>
               <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Soporta archivos .xlsx o .xls con las tablas institucionales</p>
-              <button class="btn btn-outline" onclick="document.getElementById('input-excel-file').click();">
-                Seleccionar archivo del equipo
-              </button>
+              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn btn-outline" onclick="document.getElementById('input-excel-file').click();">
+                  Seleccionar archivo del equipo
+                </button>
+                <button id="btn-revert-server-data" class="btn btn-outline" style="color:var(--critico);display:none;">
+                  Restablecer a datos del servidor
+                </button>
+              </div>
               <input type="file" id="input-excel-file" accept=".xlsx, .xls" style="display:none;">
             </div>
             <div id="upload-status" style="margin-top:16px;display:none;"></div>
+
+            <!-- Expandable Format Guide -->
+            <details style="margin-top:20px;background:#f8fafc;padding:14px 16px;border-radius:var(--radius-sm);border:1px solid var(--border-color);font-size:12.5px;">
+              <summary style="font-weight:700;color:var(--primary);cursor:pointer;user-select:none;">
+                📖 Guía del Formato de Excel y Nombres de Columnas Admitidos
+              </summary>
+              <div style="margin-top:12px;color:var(--text-main);line-height:1.6;">
+                <p>El sistema analiza el archivo y detecta automáticamente las columnas (con o sin tildes, mayúsculas o minúsculas):</p>
+                <div style="margin-top:8px;">
+                  <strong style="color:var(--primary-dark);">1. Hoja "Estudiantes" (o "Matrículas"):</strong><br>
+                  • <code>Cédula</code> (o Documento / ID)<br>
+                  • <code>Nombre</code> (o Estudiante / Alumno)<br>
+                  • <code>Estado</code> (activa / retirado)<br>
+                  • <code>Código</code> (ej. DAT-01, WEB-02, IAA-05)<br>
+                  • <code>Grupo</code> (Nombre descriptivo del grupo)<br>
+                  • <code>Horario</code> (ej. Martes 18:30-21:30 | Jueves 18:30-21:30)<br>
+                  • <code>Asistencia</code> (decimal ej. 0.088 o porcentaje)<br>
+                  • <code>Clases</code> (ej. 4/45, 8/30)<br>
+                  • <code>Programa</code> (Nombre del curso o programa académico)<br>
+                  • <code>Docente</code> (Nombre del profesor)
+                </div>
+                <div style="margin-top:10px;">
+                  <strong style="color:var(--primary-dark);">2. Hoja "GRUPOS" (Opcional):</strong><br>
+                  • <code>Código</code>, <code>Programa</code>, <code>Grupo</code>, <code>Docente</code>, <code>Horario</code>, <code>Clases planeadas</code>, <code>Clases dictadas (manual)</code>.<br>
+                  <em>* Si no incluye esta hoja, el sistema la calcula automáticamente a partir de los grupos presentes en la hoja de estudiantes.</em>
+                </div>
+                <div style="margin-top:10px;">
+                  <strong style="color:var(--primary-dark);">3. Hoja "DATOS" (Opcional - Asistencia Diaria):</strong><br>
+                  • <code>Fecha</code> (YYYY-MM-DD), <code>Código grupo</code>, <code>Cédula</code>, <code>Estudiante</code>, <code>Estado</code> (Presente / Ausente).
+                </div>
+              </div>
+            </details>
           </div>
         </div>
 
@@ -2092,10 +2135,155 @@ fetch('data/data.json')
 
     container.innerHTML = html;
 
-    // Dropzone logic using SheetJS if available
+    // Helper functions for robust Excel parsing
+    function findSheet(wb, names) {
+      if (!wb || !wb.SheetNames) return null;
+      for (const name of names) {
+        const found = wb.SheetNames.find(s => s.trim().toLowerCase() === name.toLowerCase());
+        if (found) return wb.Sheets[found];
+      }
+      return null;
+    }
+
+    function sheetToRowsWithDynamicHeader(sheet) {
+      if (!sheet) return [];
+      const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      if (!aoa || aoa.length === 0) return [];
+      
+      let headerRowIndex = 0;
+      for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+        const row = aoa[i];
+        if (!Array.isArray(row)) continue;
+        const rowStr = row.map(c => String(c).toLowerCase()).join(" ");
+        if (rowStr.includes("código") || rowStr.includes("codigo") || 
+            rowStr.includes("cédula") || rowStr.includes("cedula") || 
+            rowStr.includes("documento") || rowStr.includes("nombre") || 
+            rowStr.includes("programa") || rowStr.includes("fecha")) {
+          headerRowIndex = i;
+          break;
+        }
+      }
+
+      return XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex });
+    }
+
+    function getVal(row, keys, def = "") {
+      if (!row) return def;
+      for (const k of keys) {
+        const target = k.trim().toLowerCase();
+        for (const rowKey of Object.keys(row)) {
+          if (rowKey.trim().toLowerCase() === target) {
+            const val = row[rowKey];
+            return (val !== undefined && val !== null) ? val : def;
+          }
+        }
+      }
+      return def;
+    }
+
+    // Dropzone logic using SheetJS
     const dropzone = document.getElementById("excel-dropzone");
     const fileInput = document.getElementById("input-excel-file");
     const statusBox = document.getElementById("upload-status");
+    const btnRevert = document.getElementById("btn-revert-server-data");
+    const btnDownloadTemplate = document.getElementById("btn-download-excel-template");
+
+    if (localStorage.getItem("jd_custom_excel_data") && btnRevert) {
+      btnRevert.style.display = "inline-flex";
+      btnRevert.addEventListener("click", () => {
+        if (confirm("¿Desea eliminar los datos del Excel personalizado y volver a los datos del servidor?")) {
+          localStorage.removeItem("jd_custom_excel_data");
+          localStorage.removeItem("jd_last_sync_time");
+          localStorage.removeItem("jd_last_sync_status");
+          localStorage.removeItem("jd_last_sync_summary");
+          localStorage.removeItem("jd_last_sync_error");
+          window.location.reload();
+        }
+      });
+    }
+
+    if (btnDownloadTemplate) {
+      btnDownloadTemplate.addEventListener("click", () => {
+        if (typeof XLSX === "undefined") {
+          alert("La librería de Excel aún no ha terminado de cargar. Por favor espere unos segundos.");
+          return;
+        }
+        const wb = XLSX.utils.book_new();
+
+        const wsEstudiantes = XLSX.utils.json_to_sheet([
+          {
+            "Cédula": "1013340045",
+            "Nombre": "ANGIE LORENA HENAO BARRETO",
+            "Estado": "activa",
+            "Grupo": "DAT-01 - Análisis y Visualización de Datos",
+            "Código": "DAT-01",
+            "Horario": "Martes 12:00-14:00 | Miércoles 12:00-14:00",
+            "Asistencia": 0.088,
+            "Clases": "4/45",
+            "Programa": "ANÁLISIS Y VISUALIZACIÓN DE DATOS PARA LA TOMA DE DECISIONES",
+            "Docente": "Carlos Duran",
+            "Observación": ""
+          },
+          {
+            "Cédula": "1027801054",
+            "Nombre": "MARIA JOSE LONDOÑO GIL",
+            "Estado": "activa",
+            "Grupo": "DAT-01 - Análisis y Visualización de Datos",
+            "Código": "DAT-01",
+            "Horario": "Martes 12:00-14:00 | Miércoles 12:00-14:00",
+            "Asistencia": 0.022,
+            "Clases": "1/45",
+            "Programa": "ANÁLISIS Y VISUALIZACIÓN DE DATOS PARA LA TOMA DE DECISIONES",
+            "Docente": "Carlos Duran",
+            "Observación": ""
+          }
+        ]);
+        XLSX.utils.book_append_sheet(wb, wsEstudiantes, "Estudiantes");
+
+        const wsGrupos = XLSX.utils.json_to_sheet([
+          {
+            "Código": "DAT-01",
+            "Programa": "ANÁLISIS Y VISUALIZACIÓN DE DATOS PARA LA TOMA DE DECISIONES",
+            "Grupo": "DAT-01 - Análisis y Visualización de Datos",
+            "Docente": "Carlos Duran",
+            "Horario": "Martes 12:00-14:00 | Miércoles 12:00-14:00",
+            "Clases planeadas": 45,
+            "Clases dictadas (manual)": 9
+          }
+        ]);
+        XLSX.utils.book_append_sheet(wb, wsGrupos, "GRUPOS");
+
+        const wsBase = XLSX.utils.json_to_sheet([
+          {
+            "#": 1,
+            "Nombre": "ANGIE LORENA HENAO BARRETO",
+            "Documento": "1013340045",
+            "Tipo Doc.": "CC",
+            "Correo": "angie.henao@example.com",
+            "Teléfono": "3001234567",
+            "Estado matrícula": "activa",
+            "Código grupo": "DAT-01",
+            "Nombre grupo": "DAT-01 - Análisis y Visualización de Datos",
+            "Horario": "Martes 12:00-14:00"
+          }
+        ]);
+        XLSX.utils.book_append_sheet(wb, wsBase, "Base Estudiantes");
+
+        const wsDatos = XLSX.utils.json_to_sheet([
+          {
+            "Fecha": "2026-09-25",
+            "Código grupo": "DAT-01",
+            "Cédula": "1013340045",
+            "Estudiante": "ANGIE LORENA HENAO BARRETO",
+            "Estado": "Presente",
+            "Observación": ""
+          }
+        ]);
+        XLSX.utils.book_append_sheet(wb, wsDatos, "DATOS");
+
+        XLSX.writeFile(wb, "Plantilla_Asistencia_JD.xlsx");
+      });
+    }
 
     ['dragenter', 'dragover'].forEach(name => {
       dropzone.addEventListener(name, (e) => {
@@ -2127,10 +2315,10 @@ fetch('data/data.json')
       }
 
       statusBox.style.display = "block";
-      statusBox.innerHTML = `<div class="badge badge-seguimiento">Procesando ${file.name}...</div>`;
+      statusBox.innerHTML = `<div class="badge badge-seguimiento" style="padding:10px 14px;font-size:13px;">⏳ Procesando ${file.name}...</div>`;
 
       if (typeof XLSX === 'undefined') {
-        statusBox.innerHTML = `<div class="badge badge-critico">Error: Librería SheetJS no encontrada para parsear Excel en el navegador.</div>`;
+        statusBox.innerHTML = `<div class="badge badge-critico" style="padding:10px 14px;font-size:13px;">Error: Librería SheetJS no encontrada para parsear Excel en el navegador.</div>`;
         return;
       }
 
@@ -2140,59 +2328,158 @@ fetch('data/data.json')
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
 
-          // Parse Estudiantes
+          // 1. Parse Estudiantes / Matrículas
           let matriculas = [];
-          if (workbook.Sheets["Estudiantes"]) {
-            const rawMatr = XLSX.utils.sheet_to_json(workbook.Sheets["Estudiantes"]);
+          const sheetMatr = findSheet(workbook, ["Estudiantes", "Matriculas", "Matrículas", "Alumnos", "Base Matrículas"]);
+          if (sheetMatr) {
+            const rawMatr = sheetToRowsWithDynamicHeader(sheetMatr);
             matriculas = rawMatr.map(r => ({
-              cedula: String(r["Cédula"] || "").trim(),
-              nombre: String(r["Nombre"] || "").trim(),
-              estado: String(r["Estado"] || "").trim(),
-              grupo: String(r["Grupo"] || "").trim(),
-              codigo: String(r["Código"] || "").trim(),
-              horario: String(r["Horario"] || "").trim(),
-              asistencia: r["Asistencia"],
-              clases: String(r["Clases"] || "").trim(),
-              programa: String(r["Programa"] || "").trim(),
-              docente: String(r["Docente"] || "").trim(),
-              observacion: String(r["Observación"] || "").trim()
-            }));
+              cedula: String(getVal(r, ["Cédula", "Cedula", "Documento", "Identificación", "Identificacion", "ID"]) || "").trim(),
+              nombre: String(getVal(r, ["Nombre", "Estudiante", "Nombre Estudiante", "Alumno"]) || "").trim(),
+              estado: String(getVal(r, ["Estado", "Estado Matrícula", "Estado Matricula"]) || "activa").trim().toLowerCase(),
+              grupo: String(getVal(r, ["Grupo", "Nombre Grupo", "Nombre del Grupo"]) || "").trim(),
+              codigo: String(getVal(r, ["Código", "Codigo", "Código Grupo", "Codigo Grupo"]) || "").trim(),
+              horario: String(getVal(r, ["Horario", "Jornada"]) || "").trim(),
+              asistencia: getVal(r, ["Asistencia", "% Asistencia", "Porcentaje Asistencia", "Porc Asistencia"], null),
+              clases: String(getVal(r, ["Clases", "Sesiones", "Clases Asistidas"]) || "").trim(),
+              programa: String(getVal(r, ["Programa", "Nombre Programa", "Curso"]) || "").trim(),
+              docente: String(getVal(r, ["Docente", "Profesor", "Docente Asignado"]) || "").trim(),
+              observacion: String(getVal(r, ["Observación", "Observacion", "Detalle", "Notas"]) || "").trim()
+            })).filter(m => m.cedula || m.nombre);
           }
 
-          // Parse Grupos
+          // 2. Parse Grupos
           let grupos = [];
-          if (workbook.Sheets["GRUPOS"]) {
-            const rawG = XLSX.utils.sheet_to_json(workbook.Sheets["GRUPOS"]);
+          const sheetGrupos = findSheet(workbook, ["GRUPOS", "Grupos", "grupos", "Cursos"]);
+          if (sheetGrupos) {
+            const rawG = sheetToRowsWithDynamicHeader(sheetGrupos);
             grupos = rawG.map(r => ({
-              codigo: String(r["Código"] || "").trim(),
-              programa: String(r["Programa"] || "").trim(),
-              grupo: String(r["Grupo"] || "").trim(),
-              docente: String(r["Docente"] || "").trim(),
-              horario: String(r["Horario"] || "").trim(),
-              clasesPlaneadas: r["Clases planeadas"],
-              clasesDictadasManual: r["Clases dictadas (manual)"]
+              codigo: String(getVal(r, ["Código", "Codigo", "Código Grupo", "Codigo Grupo"]) || "").trim(),
+              programa: String(getVal(r, ["Programa", "Nombre Programa", "Curso"]) || "").trim(),
+              grupo: String(getVal(r, ["Grupo", "Nombre Grupo", "Nombre del Grupo"]) || "").trim(),
+              docente: String(getVal(r, ["Docente", "Profesor"]) || "").trim(),
+              horario: String(getVal(r, ["Horario", "Jornada"]) || "").trim(),
+              clasesPlaneadas: getVal(r, ["Clases planeadas", "Clases Planeadas", "Planeadas"], null),
+              clasesDictadasManual: getVal(r, ["Clases dictadas (manual)", "Clases Dictadas", "Dictadas"], null)
             })).filter(g => g.codigo);
           }
 
+          // Si no hay hoja GRUPOS pero sí Estudiantes, auto-generar los grupos
+          if (grupos.length === 0 && matriculas.length > 0) {
+            const mapG = new Map();
+            matriculas.forEach(m => {
+              if (m.codigo && !mapG.has(m.codigo)) {
+                mapG.set(m.codigo, {
+                  codigo: m.codigo,
+                  programa: m.programa || "Programa General",
+                  grupo: m.grupo || m.codigo,
+                  docente: m.docente || "",
+                  horario: m.horario || "",
+                  clasesPlaneadas: null,
+                  clasesDictadasManual: null
+                });
+              }
+            });
+            grupos = Array.from(mapG.values());
+          }
+
+          // 3. Base Estudiantes (Opcional)
+          let baseEstudiantes = state.baseEstudiantes || [];
+          const sheetBase = findSheet(workbook, ["Base Estudiantes", "BaseEstudiantes", "Directorio Estudiantes", "Estudiantes Base"]);
+          if (sheetBase) {
+            const rawB = sheetToRowsWithDynamicHeader(sheetBase);
+            baseEstudiantes = rawB.map((r, idx) => ({
+              num: idx + 1,
+              nombre: String(getVal(r, ["Nombre", "Estudiante"]) || "").trim(),
+              documento: String(getVal(r, ["Documento", "Cédula", "Cedula", "Identificación"]) || "").trim(),
+              tipoDoc: String(getVal(r, ["Tipo Doc.", "Tipo Doc", "Tipo Documento"]) || "CC").trim(),
+              correo: String(getVal(r, ["Correo", "Email", "Correo Estudiante"]) || "").trim(),
+              telefono: String(getVal(r, ["Teléfono", "Telefono", "Celular"]) || "").trim(),
+              estadoMatricula: String(getVal(r, ["Estado matrícula", "Estado matricula", "Estado"]) || "activa").trim().toLowerCase(),
+              fechaMatricula: String(getVal(r, ["Fecha matrícula", "Fecha matricula"]) || "").trim(),
+              codigoGrupo: String(getVal(r, ["Código grupo", "Codigo grupo", "Código", "Codigo"]) || "").trim(),
+              nombreGrupo: String(getVal(r, ["Nombre grupo", "Nombre del grupo", "Grupo"]) || "").trim(),
+              horario: String(getVal(r, ["Horario"]) || "").trim()
+            })).filter(b => b.documento || b.nombre);
+          }
+
+          // 4. DATOS Asistencia Diaria (Opcional)
+          let asistenciaDiaria = state.asistenciaDiaria || [];
+          const sheetDatos = findSheet(workbook, ["DATOS", "Datos", "datos", "Asistencia Diaria", "Asistencias"]);
+          if (sheetDatos) {
+            const rawD = sheetToRowsWithDynamicHeader(sheetDatos);
+            const parsedD = rawD.map(r => ({
+              fecha: getVal(r, ["Fecha", "Fecha Clase", "Fecha Sesion", "fecha"]),
+              codigoGrupo: String(getVal(r, ["Código grupo", "Codigo grupo", "Código", "Codigo", "Grupo"]) || "").trim(),
+              cedula: String(getVal(r, ["Cédula", "Cedula", "Documento", "Identificación"]) || "").trim(),
+              estudiante: String(getVal(r, ["Estudiante", "Nombre", "Alumno"]) || "").trim(),
+              estado: String(getVal(r, ["Estado", "Asistencia", "Estado Asistencia"]) || "Presente").trim(),
+              observacion: String(getVal(r, ["Observación", "Observacion"]) || "").trim()
+            })).filter(d => d.codigoGrupo && (d.cedula || d.estudiante));
+            if (parsedD.length > 0) {
+              asistenciaDiaria = parsedD;
+            }
+          }
+
           if (matriculas.length === 0 && grupos.length === 0) {
-            statusBox.innerHTML = `<div class="badge badge-critico">No se encontraron las hojas 'Estudiantes' o 'GRUPOS' en el archivo.</div>`;
+            statusBox.innerHTML = `<div class="badge badge-critico" style="padding:10px 14px;font-size:13px;">❌ No se detectaron las columnas requeridas ('Cédula', 'Nombre', 'Código') en el archivo. Revise el formato en la guía inferior.</div>`;
             return;
           }
 
+          const uploadTimestamp = new Date().toLocaleDateString('es-CO', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+          });
+
           const newStateData = {
+            metadata: {
+              ultimaActualizacion: uploadTimestamp,
+              totalMatriculas: matriculas.length,
+              totalGrupos: grupos.length,
+              totalEstudiantes: baseEstudiantes.length,
+              totalAsistencias: asistenciaDiaria.length,
+              origen: "Archivo Excel cargado: " + file.name
+            },
             parametros: state.parametros,
-            grupos: grupos.length > 0 ? grupos : state.grupos,
-            matriculas: matriculas.length > 0 ? matriculas : state.matriculas,
-            baseEstudiantes: state.baseEstudiantes
+            grupos: grupos,
+            matriculas: matriculas,
+            baseEstudiantes: baseEstudiantes,
+            asistenciaDiaria: asistenciaDiaria
           };
 
-          const calculated = AttendanceEngine.recalculateAll(newStateData);
-          statusBox.innerHTML = `<div class="badge badge-normal">✅ ¡Datos cargados con éxito! (${calculated.matriculas.length} matrículas, ${calculated.grupos.length} grupos)</div>`;
+          // Save custom excel data in localStorage so page reload preserves it
+          try {
+            localStorage.setItem("jd_custom_excel_data", JSON.stringify(newStateData));
+            localStorage.setItem("jd_last_sync_time", uploadTimestamp);
+            localStorage.setItem("jd_last_sync_status", "success");
+            localStorage.setItem("jd_last_sync_summary", `${matriculas.length} matrículas y ${grupos.length} grupos desde Excel`);
+            localStorage.removeItem("jd_last_sync_error");
+          } catch (e) {
+            console.warn("Storage quota exceeded, keeping in memory:", e);
+          }
 
+          const calculated = AttendanceEngine.recalculateAll(newStateData);
+          statusBox.innerHTML = `
+            <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:var(--radius-sm);padding:14px;color:#166534;margin-top:10px;">
+              <div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;">
+                ✅ ¡Archivo procesado y recalculado exitosamente!
+              </div>
+              <div style="font-size:12.5px;margin-top:6px;line-height:1.5;">
+                • <strong>Matrículas procesadas:</strong> ${calculated.matriculas.length}<br>
+                • <strong>Grupos activos:</strong> ${calculated.grupos.length}<br>
+                • <strong>Estudiantes base:</strong> ${calculated.baseEstudiantes ? calculated.baseEstudiantes.length : 0}<br>
+                • <strong>Asistencias sesión a sesión:</strong> ${calculated.asistenciaDiaria ? calculated.asistenciaDiaria.length : 0}<br>
+                <em>Los datos se han guardado en la memoria de su navegador para esta sesión.</em>
+              </div>
+            </div>
+          `;
+
+          if (btnRevert) btnRevert.style.display = "inline-flex";
+          updateSidebarSync();
           if (onDataLoaded) onDataLoaded(calculated);
         } catch (err) {
           console.error(err);
-          statusBox.innerHTML = `<div class="badge badge-critico">Error al procesar el archivo: ${err.message}</div>`;
+          statusBox.innerHTML = `<div class="badge badge-critico" style="padding:10px 14px;font-size:13px;">Error al procesar el archivo: ${err.message}</div>`;
         }
       };
       reader.readAsArrayBuffer(file);

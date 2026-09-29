@@ -217,28 +217,41 @@ document.addEventListener("DOMContentLoaded", function () {
     const syncDotEl = document.getElementById("sidebar-status-dot");
     if (!syncTimeEl) return;
 
+    const hasCustomExcel = localStorage.getItem("jd_custom_excel_data");
     const lastTime = localStorage.getItem("jd_last_sync_time");
     const lastStatus = localStorage.getItem("jd_last_sync_status");
+    const metadataTime = (state && state.metadata && state.metadata.ultimaActualizacion);
 
-    if (lastTime) {
+    if (hasCustomExcel) {
+      if (syncTitleEl) syncTitleEl.textContent = "Excel Personalizado";
+      syncTimeEl.textContent = lastTime || "Cargado en memoria";
+      if (syncDotEl) {
+        syncDotEl.style.backgroundColor = "#0ea5e9";
+        syncDotEl.style.boxShadow = "0 0 8px rgba(14, 165, 233, 0.6)";
+      }
+    } else if (lastTime) {
       if (lastStatus === "success") {
-        if (syncTitleEl) syncTitleEl.textContent = "Datos Sincronizados";
+        if (syncTitleEl) syncTitleEl.textContent = "Sincronizado en Vivo";
         syncTimeEl.textContent = lastTime;
         if (syncDotEl) {
           syncDotEl.style.backgroundColor = "var(--normal)";
           syncDotEl.style.boxShadow = "0 0 8px rgba(16, 185, 129, 0.6)";
         }
       } else {
-        if (syncTitleEl) syncTitleEl.textContent = "Fallo de Sincronización";
-        syncTimeEl.textContent = "Falló: " + lastTime;
+        if (syncTitleEl) syncTitleEl.textContent = "Servidor Desconectado";
+        syncTimeEl.textContent = metadataTime ? ("Base: " + metadataTime) : ("Falló: " + lastTime);
         if (syncDotEl) {
-          syncDotEl.style.backgroundColor = "var(--critico)";
-          syncDotEl.style.boxShadow = "0 0 8px rgba(239, 68, 68, 0.6)";
+          syncDotEl.style.backgroundColor = "var(--alerta)";
+          syncDotEl.style.boxShadow = "0 0 8px rgba(245, 158, 11, 0.6)";
         }
       }
     } else {
-      if (syncTitleEl) syncTitleEl.textContent = "Datos Sincronizados";
-      syncTimeEl.textContent = "Cálculo dinámico activo";
+      if (syncTitleEl) syncTitleEl.textContent = "Base de Datos J.D.";
+      syncTimeEl.textContent = metadataTime || "Cálculo dinámico activo";
+      if (syncDotEl) {
+        syncDotEl.style.backgroundColor = "var(--normal)";
+        syncDotEl.style.boxShadow = "0 0 8px rgba(16, 185, 129, 0.6)";
+      }
     }
   }
 
@@ -258,12 +271,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initialize Data
   function init() {
+    // 1. Check if user uploaded a custom Excel file
+    const savedCustom = localStorage.getItem("jd_custom_excel_data");
+    if (savedCustom) {
+      try {
+        const parsed = JSON.parse(savedCustom);
+        state = AttendanceEngine.recalculateAll(parsed);
+        updateSidebarBadges();
+        switchTab("inicio");
+        return;
+      } catch (e) {
+        console.warn("No se pudo cargar el Excel guardado, usando base del servidor:", e);
+      }
+    }
+
+    // 2. Load latest data from window or server
     if (typeof window.INITIAL_DATA !== 'undefined' && window.INITIAL_DATA) {
       state = AttendanceEngine.recalculateAll(window.INITIAL_DATA);
       updateSidebarBadges();
       switchTab("inicio");
     } else {
-      fetch("data/data.json")
+      fetch("data/data.json?v=" + Date.now())
         .then(res => res.json())
         .then(jsonData => {
           state = AttendanceEngine.recalculateAll(jsonData);

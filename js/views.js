@@ -40,6 +40,24 @@
     return `<span class="badge">${n}</span>`;
   }
 
+  function getFuenteBadge(fuente) {
+    if (!fuente) return `<span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-weight:600;font-size:11px;padding:2px 8px;border-radius:6px;">Cupo Sapiencia</span>`;
+    const f = String(fuente).trim();
+    if (f.toUpperCase().includes("ESUMER")) {
+      return `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-weight:600;font-size:11px;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+        Cupo ESUMER
+      </span>`;
+    }
+    if (f.toUpperCase().includes("SAPIENCIA")) {
+      return `<span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;font-weight:600;font-size:11px;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Cupo Sapiencia
+      </span>`;
+    }
+    return `<span class="badge" style="background:var(--bg-subtle);color:var(--text-main);border:1px solid var(--border-color);font-weight:600;font-size:11px;padding:2px 8px;border-radius:6px;">${f}</span>`;
+  }
+
   function getPrioridadBadge(prio) {
     if (prio === null || prio === undefined) return "—";
     if (prio === 1) return `<span class="badge badge-critico">1 (Máx)</span>`;
@@ -678,6 +696,8 @@
     const baseRecord = state.baseEstudiantes.find(b => b.documento === studentCedula);
     const email = baseRecord ? baseRecord.correo : "No está en Base Estudiantes";
     const phone = baseRecord ? baseRecord.telefono : "—";
+    const studentFuente = (mainEnrollment && mainEnrollment.fuente) || (baseRecord && baseRecord.fuente) || "Cupo Sapiencia";
+    const studentFechaMatr = (mainEnrollment && mainEnrollment.fechaMatricula) || (baseRecord && baseRecord.fechaMatricula) || "—";
 
     // Aggregated indicators for this student (across active enrollments)
     const activeEnrollments = enrollments.filter(m => m.estado === 'activa');
@@ -760,6 +780,7 @@
                 <tr>
                   <th>Estudiante</th>
                   <th>Cédula</th>
+                  <th>Fuente</th>
                   <th>Grupo</th>
                   <th>Programa</th>
                   <th class="td-right">% Asist.</th>
@@ -782,12 +803,24 @@
               ${mainEnrollment ? mainEnrollment.nombre.charAt(0) : 'E'}
             </div>
             <div>
-              <h2 style="font-size:17px;font-weight:700;line-height:1.2;">${mainEnrollment ? mainEnrollment.nombre : '—'}</h2>
-              <span class="td-code" style="font-size:13px;margin-top:4px;display:inline-block;">ID: ${studentCedula}</span>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <h2 style="font-size:18px;font-weight:700;line-height:1.2;margin:0;">${mainEnrollment ? mainEnrollment.nombre : '—'}</h2>
+                ${getFuenteBadge(studentFuente)}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                <span class="td-code" style="font-size:13px;">ID: ${studentCedula}</span>
+                ${studentFechaMatr !== "—" ? `<span style="font-size:12px;color:var(--text-muted);">• Matrícula: ${studentFechaMatr}</span>` : ''}
+              </div>
             </div>
           </div>
 
           <div class="profile-field-grid">
+            <div class="profile-field-label">Fuente:</div>
+            <div class="profile-field-value">${getFuenteBadge(studentFuente)}</div>
+
+            <div class="profile-field-label">Fecha Matrícula:</div>
+            <div class="profile-field-value">${studentFechaMatr}</div>
+
             <div class="profile-field-label">Grupo(s) activo(s):</div>
             <div class="profile-field-value td-strong">${activeGroupsStr}</div>
 
@@ -861,6 +894,7 @@
             <thead>
               <tr>
                 <th>Grupo</th>
+                <th>Fuente</th>
                 <th>Estado</th>
                 <th class="td-center">Asistidas</th>
                 <th class="td-center">Dictadas</th>
@@ -875,6 +909,7 @@
               ${enrollments.map(m => `
                 <tr>
                   <td><span class="td-code">${m.codigo}</span> ${m.grupo || ''}</td>
+                  <td>${getFuenteBadge(m.fuente || studentFuente)}</td>
                   <td><span class="badge ${m.estado === 'activa' ? 'badge-normal' : 'badge-retirado'}">${m.estado}</span></td>
                   <td class="td-center">${m.asistidas !== null ? m.asistidas : '—'}</td>
                   <td class="td-center">${m.clasesDictadas !== null ? m.clasesDictadas : '—'}</td>
@@ -962,6 +997,7 @@
         uniqueStudents.push({
           cedula: m.cedula,
           nombre: m.nombre,
+          fuente: m.fuente,
           grupo: m.codigo,
           programa: m.programa,
           porcAsistencia: m.porcAsistencia,
@@ -984,7 +1020,8 @@
       currentMatches = uniqueStudents.filter(s => 
         s.nombre.toLowerCase().includes(qLower) || 
         s.cedula.includes(qLower) ||
-        s.grupo.toLowerCase().includes(qLower)
+        s.grupo.toLowerCase().includes(qLower) ||
+        (s.fuente && s.fuente.toLowerCase().includes(qLower))
       );
 
       // Sort: students whose name starts with query first
@@ -1023,6 +1060,7 @@
               </div>
               <div class="student-meta-line">
                 <span class="td-code" style="font-size:11.5px;">${highlightText(s.cedula, q)}</span>
+                ${getFuenteBadge(s.fuente)}
                 <span class="badge" style="background:#f1f5f9;color:#334155;font-size:11px;padding:1px 6px;">${s.grupo}</span>
                 <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;">${s.programa}</span>
               </div>
@@ -1169,6 +1207,7 @@
           <tr>
             <td class="td-strong">${s.nombre}</td>
             <td><span class="td-code">${s.cedula}</span></td>
+            <td>${getFuenteBadge(s.fuente)}</td>
             <td><span class="td-code">${s.grupo}</span></td>
             <td style="font-size:12px;">${s.programa}</td>
             <td class="td-right td-strong">${formatPct(s.porcAsistencia)}</td>
@@ -1697,15 +1736,18 @@
     const pageSize = 50;
     let currentQuery = "";
     let currentFilterEstado = "todos";
+    let currentFilterFuente = "todos";
 
     function getFilteredMatriculas() {
       return state.matriculas.filter(m => {
         if (currentFilterEstado !== "todos" && m.estado !== currentFilterEstado) return false;
+        if (currentFilterFuente !== "todos" && m.fuente !== currentFilterFuente) return false;
         if (currentQuery) {
           const match = m.nombre.toLowerCase().includes(currentQuery) ||
                         m.cedula.includes(currentQuery) ||
                         m.codigo.toLowerCase().includes(currentQuery) ||
-                        m.docente.toLowerCase().includes(currentQuery);
+                        m.docente.toLowerCase().includes(currentQuery) ||
+                        (m.fuente && m.fuente.toLowerCase().includes(currentQuery));
           if (!match) return false;
         }
         return true;
@@ -1735,6 +1777,7 @@
               </a>
             </td>
             <td><span class="td-code">${m.cedula}</span></td>
+            <td>${getFuenteBadge(m.fuente)}</td>
             <td><span class="badge ${m.estado === 'activa' ? 'badge-normal' : 'badge-retirado'}">${m.estado}</span></td>
             <td><span class="td-code">${m.codigo}</span></td>
             <td style="font-size:12px;">${m.docente}</td>
@@ -1763,15 +1806,20 @@
         <div class="card-header">
           <div class="card-title-box">
             <h3>Directorio Completo de Estudiantes y Matrículas</h3>
-            <p>Registro de las 2,127 matrículas en el sistema</p>
+            <p>Registro de las ${state.matriculas.length.toLocaleString()} matrículas en el sistema</p>
           </div>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <select id="select-filter-matricula-fuente" class="form-select" style="width:auto;">
+              <option value="todos">Todas las Fuentes</option>
+              <option value="Cupo Sapiencia">Cupo Sapiencia</option>
+              <option value="Cupo ESUMER">Cupo ESUMER</option>
+            </select>
             <select id="select-filter-matricula-estado" class="form-select" style="width:auto;">
               <option value="todos">Todos los Estados</option>
               <option value="activa" selected>Solo Activas</option>
               <option value="retirado">Solo Retirados</option>
             </select>
-            <input type="text" id="input-search-matriculas" class="form-input" style="max-width:240px;" placeholder="Buscar nombre, cédula o grupo...">
+            <input type="text" id="input-search-matriculas" class="form-input" style="max-width:220px;" placeholder="Buscar nombre, cédula o grupo...">
             <button id="btn-export-all-matriculas-csv" class="btn btn-outline">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               Exportar Todo CSV
@@ -1785,6 +1833,7 @@
               <tr>
                 <th>Estudiante</th>
                 <th>Cédula</th>
+                <th>Fuente</th>
                 <th>Estado</th>
                 <th>Código</th>
                 <th>Docente</th>
@@ -1822,6 +1871,12 @@
       renderTable();
     });
 
+    container.querySelector("#select-filter-matricula-fuente").addEventListener("change", (e) => {
+      currentFilterFuente = e.target.value;
+      currentPage = 1;
+      renderTable();
+    });
+
     container.querySelector("#select-filter-matricula-estado").addEventListener("change", (e) => {
       currentFilterEstado = e.target.value;
       currentPage = 1;
@@ -1848,10 +1903,11 @@
     container.querySelector("#btn-export-all-matriculas-csv").addEventListener("click", () => {
       exportTableToCSV(
         "Matriculas_Completo.csv",
-        ["Cédula", "Nombre", "Estado", "Grupo", "Código", "Docente", "Horario", "Clases", "Asistidas", "Clases Planeadas", "Clases Dictadas", "Inasistencias", "% Asistencia", "Nivel", "Tipo Alerta", "Prioridad", "En Base Estudiantes", "Observación"],
+        ["Cédula", "Nombre", "Fuente", "Estado", "Grupo", "Código", "Docente", "Horario", "Clases", "Asistidas", "Clases Planeadas", "Clases Dictadas", "Inasistencias", "% Asistencia", "Nivel", "Tipo Alerta", "Prioridad", "En Base Estudiantes", "Observación"],
         state.matriculas.map(m => [
           m.cedula,
           m.nombre,
+          m.fuente || "Cupo Sapiencia",
           m.estado,
           m.grupo,
           m.codigo,
@@ -2038,6 +2094,7 @@
           <div class="card-header">
             <div class="card-title-box">
               <h3>Actualizar Informe desde Archivo Excel</h3>
+              <p>Arrastre un archivo Informe Asistencia.xlsx para recalcular al instante</p>
               <p>Arrastre un archivo Excel (.xlsx) para recalcular y actualizar el tablero al instante</p>
             </div>
             <div>
@@ -2052,6 +2109,9 @@
               <svg class="dropzone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
               <h4 style="font-size:16px;font-weight:700;color:var(--text-main);margin-bottom:6px;">Arrastre su archivo Excel aquí</h4>
               <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Soporta archivos .xlsx o .xls con las tablas institucionales</p>
+              <button class="btn btn-outline" onclick="document.getElementById('input-excel-file').click();">
+                Seleccionar archivo del equipo
+              </button>
               <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
                 <button class="btn btn-outline" onclick="document.getElementById('input-excel-file').click();">
                   Seleccionar archivo del equipo
@@ -2135,6 +2195,7 @@ fetch('data/data.json')
 
     container.innerHTML = html;
 
+    // Dropzone logic using SheetJS if available
     // Helper functions for robust Excel parsing
     function findSheet(wb, names) {
       if (!wb || !wb.SheetNames) return null;
@@ -2330,31 +2391,51 @@ fetch('data/data.json')
 
           // 1. Parse Estudiantes / Matrículas
           let matriculas = [];
-          const sheetMatr = findSheet(workbook, ["Estudiantes", "Matriculas", "Matrículas", "Alumnos", "Base Matrículas"]);
+          const sheetMatr = findSheet(workbook, ["Estudiantes", "Matriculas", "Matrículas", "MATRICULADOS", "Matriculados", "Alumnos", "Base Matrículas"]);
           if (sheetMatr) {
             const rawMatr = sheetToRowsWithDynamicHeader(sheetMatr);
-            matriculas = rawMatr.map(r => ({
-              cedula: String(getVal(r, ["Cédula", "Cedula", "Documento", "Identificación", "Identificacion", "ID"]) || "").trim(),
-              nombre: String(getVal(r, ["Nombre", "Estudiante", "Nombre Estudiante", "Alumno"]) || "").trim(),
-              estado: String(getVal(r, ["Estado", "Estado Matrícula", "Estado Matricula"]) || "activa").trim().toLowerCase(),
-              grupo: String(getVal(r, ["Grupo", "Nombre Grupo", "Nombre del Grupo"]) || "").trim(),
-              codigo: String(getVal(r, ["Código", "Codigo", "Código Grupo", "Codigo Grupo"]) || "").trim(),
-              horario: String(getVal(r, ["Horario", "Jornada"]) || "").trim(),
-              asistencia: getVal(r, ["Asistencia", "% Asistencia", "Porcentaje Asistencia", "Porc Asistencia"], null),
-              clases: String(getVal(r, ["Clases", "Sesiones", "Clases Asistidas"]) || "").trim(),
-              programa: String(getVal(r, ["Programa", "Nombre Programa", "Curso"]) || "").trim(),
-              docente: String(getVal(r, ["Docente", "Profesor", "Docente Asignado"]) || "").trim(),
-              observacion: String(getVal(r, ["Observación", "Observacion", "Detalle", "Notas"]) || "").trim()
-            })).filter(m => m.cedula || m.nombre);
+            matriculas = rawMatr.map(r => {
+              const doc = String(getVal(r, ["Cédula", "Cedula", "Documento", "Número de documento", "Numero de documento", "Identificación", "Identificacion", "ID"]) || "").trim();
+              const nom = String(getVal(r, ["Nombre", "Nombre completo", "Estudiante", "Nombre Estudiante", "Alumno"]) || "").trim();
+              const est = String(getVal(r, ["Estado", "Estado Matrícula", "Estado Matricula"]) || "activa").trim().toLowerCase();
+              const grp = String(getVal(r, ["Grupo", "Nombre Grupo", "Nombre del Grupo"]) || "").trim();
+              const cod = String(getVal(r, ["Código", "Codigo", "Código Grupo", "Codigo Grupo"]) || "").trim() || grp;
+              const hor = String(getVal(r, ["Horario", "Jornada"]) || "").trim();
+              const asistRatio = getVal(r, ["Asistencia", "% Asistencia", "Porcentaje Asistencia", "Porc Asistencia"], null);
+              const cls = String(getVal(r, ["Clases", "Sesiones", "Clases Asistidas"]) || "").trim();
+              const prog = String(getVal(r, ["Programa", "Nombre Programa", "Curso"]) || "").trim();
+              const docent = String(getVal(r, ["Docente", "Profesor", "Docente Asignado"]) || "").trim();
+              const obs = String(getVal(r, ["Observación", "Observacion", "Detalle", "Notas"]) || "").trim();
+              const obsFuente = String(getVal(r, ["Observaciones", "Observación", "Observacion", "Fuente", "Tipo Cupo"]) || "").trim();
+              let fuente = "Cupo Sapiencia";
+              if (obsFuente.toUpperCase().includes("ESUMER")) fuente = "Cupo ESUMER";
+              else if (obsFuente.toUpperCase().includes("SAPIENCIA")) fuente = "Cupo Sapiencia";
+              else if (obsFuente) fuente = obsFuente;
+
+              return {
+                cedula: doc,
+                nombre: nom,
+                estado: est,
+                grupo: grp,
+                codigo: cod,
+                horario: hor,
+                asistencia: asistRatio,
+                clases: cls,
+                programa: prog,
+                docente: docent,
+                observacion: obs,
+                fuente: fuente
+              };
+            }).filter(m => m.cedula || m.nombre);
           }
 
           // 2. Parse Grupos
           let grupos = [];
-          const sheetGrupos = findSheet(workbook, ["GRUPOS", "Grupos", "grupos", "Cursos"]);
+          const sheetGrupos = findSheet(workbook, ["GRUPOS", "Grupos", "grupos", "Cursos", "RESUMEN", "Resumen"]);
           if (sheetGrupos) {
             const rawG = sheetToRowsWithDynamicHeader(sheetGrupos);
             grupos = rawG.map(r => ({
-              codigo: String(getVal(r, ["Código", "Codigo", "Código Grupo", "Codigo Grupo"]) || "").trim(),
+              codigo: String(getVal(r, ["Código", "Codigo", "Código Grupo", "Codigo Grupo", "Grupo"]) || "").trim(),
               programa: String(getVal(r, ["Programa", "Nombre Programa", "Curso"]) || "").trim(),
               grupo: String(getVal(r, ["Grupo", "Nombre Grupo", "Nombre del Grupo"]) || "").trim(),
               docente: String(getVal(r, ["Docente", "Profesor"]) || "").trim(),
@@ -2385,22 +2466,31 @@ fetch('data/data.json')
 
           // 3. Base Estudiantes (Opcional)
           let baseEstudiantes = state.baseEstudiantes || [];
-          const sheetBase = findSheet(workbook, ["Base Estudiantes", "BaseEstudiantes", "Directorio Estudiantes", "Estudiantes Base"]);
+          const sheetBase = findSheet(workbook, ["Base Estudiantes", "BaseEstudiantes", "Directorio Estudiantes", "Estudiantes Base", "MATRICULADOS", "Matriculados"]);
           if (sheetBase) {
             const rawB = sheetToRowsWithDynamicHeader(sheetBase);
-            baseEstudiantes = rawB.map((r, idx) => ({
-              num: idx + 1,
-              nombre: String(getVal(r, ["Nombre", "Estudiante"]) || "").trim(),
-              documento: String(getVal(r, ["Documento", "Cédula", "Cedula", "Identificación"]) || "").trim(),
-              tipoDoc: String(getVal(r, ["Tipo Doc.", "Tipo Doc", "Tipo Documento"]) || "CC").trim(),
-              correo: String(getVal(r, ["Correo", "Email", "Correo Estudiante"]) || "").trim(),
-              telefono: String(getVal(r, ["Teléfono", "Telefono", "Celular"]) || "").trim(),
-              estadoMatricula: String(getVal(r, ["Estado matrícula", "Estado matricula", "Estado"]) || "activa").trim().toLowerCase(),
-              fechaMatricula: String(getVal(r, ["Fecha matrícula", "Fecha matricula"]) || "").trim(),
-              codigoGrupo: String(getVal(r, ["Código grupo", "Codigo grupo", "Código", "Codigo"]) || "").trim(),
-              nombreGrupo: String(getVal(r, ["Nombre grupo", "Nombre del grupo", "Grupo"]) || "").trim(),
-              horario: String(getVal(r, ["Horario"]) || "").trim()
-            })).filter(b => b.documento || b.nombre);
+            baseEstudiantes = rawB.map((r, idx) => {
+              const obsFuente = String(getVal(r, ["Observaciones", "Observación", "Observacion", "Fuente", "Tipo Cupo"]) || "").trim();
+              let fuente = "Cupo Sapiencia";
+              if (obsFuente.toUpperCase().includes("ESUMER")) fuente = "Cupo ESUMER";
+              else if (obsFuente.toUpperCase().includes("SAPIENCIA")) fuente = "Cupo Sapiencia";
+              else if (obsFuente) fuente = obsFuente;
+
+              return {
+                num: idx + 1,
+                nombre: String(getVal(r, ["Nombre", "Nombre completo", "Estudiante"]) || "").trim(),
+                documento: String(getVal(r, ["Documento", "Número de documento", "Numero de documento", "Cédula", "Cedula", "Identificación"]) || "").trim(),
+                tipoDoc: String(getVal(r, ["Tipo Doc.", "Tipo Doc", "Tipo Documento", "Tipo de documento"]) || "CC").trim(),
+                correo: String(getVal(r, ["Correo", "Email", "Correo Estudiante"]) || "").trim(),
+                telefono: String(getVal(r, ["Teléfono", "Telefono", "Celular"]) || "").trim(),
+                estadoMatricula: String(getVal(r, ["Estado matrícula", "Estado matricula", "Estado"]) || "activa").trim().toLowerCase(),
+                fechaMatricula: String(getVal(r, ["Fecha matrícula", "Fecha matricula", "Fecha de matrícula"]) || "").trim(),
+                codigoGrupo: String(getVal(r, ["Código grupo", "Codigo grupo", "Código", "Codigo", "Grupo"]) || "").trim(),
+                nombreGrupo: String(getVal(r, ["Nombre grupo", "Nombre del grupo", "Grupo"]) || "").trim(),
+                horario: String(getVal(r, ["Horario", "Jornada"]) || "").trim(),
+                fuente: fuente
+              };
+            }).filter(b => b.documento || b.nombre);
           }
 
           // 4. DATOS Asistencia Diaria (Opcional)
@@ -2441,10 +2531,10 @@ fetch('data/data.json')
               origen: "Archivo Excel cargado: " + file.name
             },
             parametros: state.parametros,
-            grupos: grupos,
-            matriculas: matriculas,
-            baseEstudiantes: baseEstudiantes,
-            asistenciaDiaria: asistenciaDiaria
+            grupos: grupos.length > 0 ? grupos : state.grupos,
+            matriculas: matriculas.length > 0 ? matriculas : state.matriculas,
+            baseEstudiantes: baseEstudiantes.length > 0 ? baseEstudiantes : state.baseEstudiantes,
+            asistenciaDiaria: asistenciaDiaria.length > 0 ? asistenciaDiaria : state.asistenciaDiaria
           };
 
           // Save custom excel data in localStorage so page reload preserves it
@@ -2459,6 +2549,7 @@ fetch('data/data.json')
           }
 
           const calculated = AttendanceEngine.recalculateAll(newStateData);
+          statusBox.innerHTML = `<div class="badge badge-normal">✅ ¡Datos cargados con éxito! (${calculated.matriculas.length} matrículas, ${calculated.grupos.length} grupos)</div>`;
           statusBox.innerHTML = `
             <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:var(--radius-sm);padding:14px;color:#166534;margin-top:10px;">
               <div style="font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;">
@@ -2479,6 +2570,7 @@ fetch('data/data.json')
           if (onDataLoaded) onDataLoaded(calculated);
         } catch (err) {
           console.error(err);
+          statusBox.innerHTML = `<div class="badge badge-critico">Error al procesar el archivo: ${err.message}</div>`;
           statusBox.innerHTML = `<div class="badge badge-critico" style="padding:10px 14px;font-size:13px;">Error al procesar el archivo: ${err.message}</div>`;
         }
       };

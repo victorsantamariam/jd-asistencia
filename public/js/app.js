@@ -224,7 +224,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (hasCustomExcel) {
       if (syncTitleEl) syncTitleEl.textContent = "Excel Personalizado";
-      syncTimeEl.textContent = lastTime || "Cargado en memoria";
+      if (syncTimeEl) syncTimeEl.textContent = lastTime || "Cargado en memoria";
       if (syncDotEl) {
         syncDotEl.style.backgroundColor = "#0ea5e9";
         syncDotEl.style.boxShadow = "0 0 8px rgba(14, 165, 233, 0.6)";
@@ -232,14 +232,14 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (lastTime) {
       if (lastStatus === "success") {
         if (syncTitleEl) syncTitleEl.textContent = "Sincronizado en Vivo";
-        syncTimeEl.textContent = lastTime;
+        if (syncTimeEl) syncTimeEl.textContent = lastTime;
         if (syncDotEl) {
           syncDotEl.style.backgroundColor = "var(--normal)";
           syncDotEl.style.boxShadow = "0 0 8px rgba(16, 185, 129, 0.6)";
         }
       } else {
         if (syncTitleEl) syncTitleEl.textContent = "Servidor Desconectado";
-        syncTimeEl.textContent = metadataTime ? ("Base: " + metadataTime) : ("Falló: " + lastTime);
+        if (syncTimeEl) syncTimeEl.textContent = metadataTime ? ("Base: " + metadataTime) : ("Falló: " + lastTime);
         if (syncDotEl) {
           syncDotEl.style.backgroundColor = "var(--alerta)";
           syncDotEl.style.boxShadow = "0 0 8px rgba(245, 158, 11, 0.6)";
@@ -247,7 +247,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } else {
       if (syncTitleEl) syncTitleEl.textContent = "Base de Datos J.D.";
-      syncTimeEl.textContent = metadataTime || "Cálculo dinámico activo";
+      if (syncTimeEl) syncTimeEl.textContent = metadataTime || "Cálculo dinámico activo";
       if (syncDotEl) {
         syncDotEl.style.backgroundColor = "var(--normal)";
         syncDotEl.style.boxShadow = "0 0 8px rgba(16, 185, 129, 0.6)";
